@@ -5,8 +5,8 @@
   "AssemblyVersion": "2.0.0.2",
   "ApplicableVersion": "any",
   "Description": "Changes lalafells (or everyone) into another race of your choosing.",
-  "Punchline": "Square, please give us miqote sandboxes and au ra heating lamps. We will pay real money.",
-  "RepoUrl": "https://github.com/Aida-Enna/XIVPlugins",
+  "Punchline": "Test, swolewizard",
+  "RepoUrl": "https://github.com/swolewizard/XIVPlugins",
   "Tags": [
     "lala",
     "lalafell",
@@ -22,5 +22,5 @@
   "DownloadLinkUpdate": null,
   "DownloadLinkTesting": null,
   "ImageUrls": null,
-  "IconUrl": "https://raw.githubusercontent.com/Aida-Enna/XIVPlugins/main/PotatoFamine2/Resources/Icons/PotatoFamine2.png"
+  "IconUrl": "https://raw.githubusercontent.com/swolewizard/XIVPlugins/main/PotatoFamine2/Resources/Icons/PotatoFamine2.png"
 }

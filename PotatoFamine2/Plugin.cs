@@ -306,18 +306,28 @@ namespace PotatoFamine2
                     && actor.ObjectId != ClientState.LocalPlayer.ObjectId
                     && PluginConfig.ShouldChangeOthers)
                 {
-                    if (PluginConfig.UseTrustedList) //If they're in the trusted list, don't change them
+                    if (actor.ObjectKind == ObjectKind.Player) // Check if it's a player character
                     {
-                        if (!Functions.ListContainsPlayer(PluginConfig.TrustedList, actor.Name.TextValue))
+                        if (PluginConfig.UseTrustedList) //If they're in the trusted list, don't change them
+                        {
+                            if (!Functions.ListContainsPlayer(PluginConfig.TrustedList, actor.Name.TextValue))
+                            {
+                                this.ChangeRace(customizeDataPtr, PluginConfig.ChangeOthersTargetRace);
+                            }
+
+                        }
+                        else //Change them
                         {
                             this.ChangeRace(customizeDataPtr, PluginConfig.ChangeOthersTargetRace);
                         }
-                        
                     }
-                    else //Change them
+                    else if (actor.ObjectKind == ObjectKind.BattleNpc) // Check if it's an NPC Lalafel and the option is enabled
                     {
-                        this.ChangeRace(customizeDataPtr, PluginConfig.ChangeOthersTargetRace);
+                        // Change the race of the NPC Lalafel
+                        this.ChangeNPCRace(customizeDataPtr, PluginConfig.ChangeOthersTargetRace);
                     }
+
+                    
                 }
 
                 if (actor != null &&
@@ -395,6 +405,39 @@ namespace PotatoFamine2
                 lastPlayerGender = customData.Gender;
                 lastWasModified = true;
             }
+        }
+
+        private void ChangeNPCRace(IntPtr customizeDataPtr, Race targetRace)
+        {
+            var customData = Marshal.PtrToStructure<CharaCustomizeData>(customizeDataPtr);
+
+            // Modify the race/tribe accordingly
+            customData.Race = targetRace;
+            customData.Tribe = (byte)((byte)customData.Race * 2 - customData.Tribe % 2);
+
+            // Special-case Hrothgar gender to prevent issues
+            customData.Gender = targetRace switch
+            {
+                Race.HROTHGAR => 0, // Force male for Hrothgar
+                _ => customData.Gender
+            };
+
+            // Constrain face type to 0-3 so we don't decapitate the character
+            customData.FaceType %= 4;
+
+            // Constrain body type to 0-1 so we don't crash the game
+            customData.ModelType %= 2;
+
+            // Hrothgar have a limited number of lip colors?
+            customData.LipColor = targetRace switch
+            {
+                Race.HROTHGAR => (byte)(customData.LipColor % 5 + 1),
+                _ => customData.LipColor
+            };
+
+            customData.HairStyle = (byte)(customData.HairStyle % RaceMappings.RaceHairs[targetRace] + 1);
+
+            Marshal.StructureToPtr(customData, customizeDataPtr, true);
         }
 
         private IntPtr FlagSlotUpdateDetour(IntPtr actorPtr, uint slot, IntPtr equipDataPtr)
