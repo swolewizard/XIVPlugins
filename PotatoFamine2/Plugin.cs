@@ -279,7 +279,7 @@ namespace PotatoFamine2
         private IntPtr CharacterIsMountDetour(IntPtr actorPtr)
         {
             // TODO: use native FFXIVClientStructs unsafe methods?
-            if (Marshal.ReadByte(actorPtr + 0x8C) == (byte)ObjectKind.Player)
+            if (Marshal.ReadByte(actorPtr + 0x8C) == (byte)ObjectKind.BattleNpc)
             {
                 lastActor = actorPtr;
                 lastWasPlayer = true;
@@ -294,7 +294,8 @@ namespace PotatoFamine2
 
         private IntPtr CharacterInitializeDetour(IntPtr drawObjectBase, IntPtr customizeDataPtr)
         {
-            
+            if (lastWasPlayer)
+            {
                 var actor = ObjectTable.CreateObjectReference(lastActor);
                 lastWasModified = false;
                 lastWasSelf = false;
@@ -321,7 +322,11 @@ namespace PotatoFamine2
 
                 }
 
-                if (actor != null)
+                if (actor != null &&
+                    (actor.ObjectId != CHARA_WINDOW_ACTOR_ID || PluginConfig.ImmersiveMode)
+                    && ClientState.LocalPlayer != null
+                    && actor.ObjectId != ClientState.LocalPlayer.ObjectId
+                    && PluginConfig.ForciblyChangePeople && Functions.ListContainsPlayer(PluginConfig.ForciblyChangeList, actor.Name.TextValue))
                 {
                     //They're in the forcibly change list so we're changing them
                     this.ChangeRace(customizeDataPtr, PluginConfig.ForciblyChangePeopleTargetRace, true);
@@ -336,7 +341,7 @@ namespace PotatoFamine2
                     lastWasSelf = true;
                     this.ChangeRace(customizeDataPtr, PluginConfig.ChangeSelfTargetRace);
                 }
-            
+            }
             return charaInitHook.Original(drawObjectBase, customizeDataPtr);
         }
 
