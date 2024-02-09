@@ -306,28 +306,22 @@ namespace PotatoFamine2
                     && actor.ObjectId != ClientState.LocalPlayer.ObjectId
                     && PluginConfig.ShouldChangeOthers)
                 {
-                    if (actor.ObjectKind == ObjectKind.Player) // Check if it's a player character
+                    if (PluginConfig.UseTrustedList) //If they're in the trusted list, don't change them
                     {
-                        if (PluginConfig.UseTrustedList) //If they're in the trusted list, don't change them
-                        {
-                            if (!Functions.ListContainsPlayer(PluginConfig.TrustedList, actor.Name.TextValue))
-                            {
-                                this.ChangeRace(customizeDataPtr, PluginConfig.ChangeOthersTargetRace);
-                            }
-
-                        }
-                        else //Change them
+                        if (!Functions.ListContainsPlayer(PluginConfig.TrustedList, actor.Name.TextValue))
                         {
                             this.ChangeRace(customizeDataPtr, PluginConfig.ChangeOthersTargetRace);
+                            this.ChangeNPCRace(customizeDataPtr, PluginConfig.ChangeOthersTargetRace);
                         }
+
                     }
-                    else if (actor.ObjectKind == ObjectKind.BattleNpc) // Check if it's an NPC Lalafel and the option is enabled
+                    else //Change them
                     {
-                        // Change the race of the NPC Lalafel
+                        this.ChangeRace(customizeDataPtr, PluginConfig.ChangeOthersTargetRace);
                         this.ChangeNPCRace(customizeDataPtr, PluginConfig.ChangeOthersTargetRace);
                     }
 
-                    
+
                 }
 
                 if (actor != null &&
@@ -680,10 +674,10 @@ namespace PotatoFamine2
     public sealed unsafe partial class VisibilityManager
     {
         public static DrawState* ActorDrawState(GameObject actor)
-    => (DrawState*)(&((FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)actor.Address)->RenderFlags);
+            => (DrawState*)(&((FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)actor.Address)->RenderFlags);
 
         private static int ObjectTableIndex(GameObject actor)
-    => ((FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)actor.Address)->ObjectIndex;
+            => ((FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)actor.Address)->ObjectIndex;
 
         public static void MakeInvisible(GameObject? actor)
         {
@@ -694,9 +688,32 @@ namespace PotatoFamine2
 
             *ActorDrawState(actor!) |= DrawState.Invisibility;
 
-            if (/*actor is PlayerCharacter &&*/ Objects[tableIndex + 1] is { ObjectKind: ObjectKind.MountType } mount)
+            // Make mounts invisible if the actor is a player character
+            if (actor is PlayerCharacter player && Objects[tableIndex + 1] is { ObjectKind: ObjectKind.MountType } mount)
             {
                 *ActorDrawState(mount) |= DrawState.Invisibility;
+            }
+
+            // Make NPC actors invisible
+            if (actor?.ObjectKind == ObjectKind.BattleNpc)
+            {
+                foreach (var gameObject in Objects)
+                {
+                    if (gameObject.ObjectKind == ObjectKind.BattleNpc)
+                    {
+                        *ActorDrawState(gameObject) |= DrawState.Invisibility;
+                    }
+                }
+            }
+            else if (actor?.ObjectKind == ObjectKind.EventNpc)
+            {
+                foreach (var gameObject in Objects)
+                {
+                    if (gameObject.ObjectKind == ObjectKind.EventNpc)
+                    {
+                        *ActorDrawState(gameObject) |= DrawState.Invisibility;
+                    }
+                }
             }
         }
 
@@ -709,9 +726,34 @@ namespace PotatoFamine2
 
             *ActorDrawState(actor!) &= ~DrawState.Invisibility;
 
-            if (actor is PlayerCharacter && Objects[tableIndex + 1] is { ObjectKind: ObjectKind.MountType } mount)
+            // Make mounts visible if the actor is a player character
+            if (actor is PlayerCharacter player && Objects[tableIndex + 1] is { ObjectKind: ObjectKind.MountType } mount)
             {
                 *ActorDrawState(mount) &= ~DrawState.Invisibility;
+            }
+
+            // Make NPC actors visible
+            if (actor?.ObjectKind == ObjectKind.BattleNpc)
+            {
+                foreach (var gameObject in Objects)
+                {
+                    if (gameObject.ObjectKind == ObjectKind.BattleNpc)
+                    {
+                        *ActorDrawState(gameObject) &= ~DrawState.Invisibility;
+                    }
+
+                }
+            }
+            else if (actor?.ObjectKind == ObjectKind.EventNpc)
+            {
+                foreach (var gameObject in Objects)
+                {
+                    if (gameObject.ObjectKind == ObjectKind.EventNpc)
+                    {
+                        *ActorDrawState(gameObject) &= ~DrawState.Invisibility;
+                    }
+
+                }
             }
         }
 
@@ -727,4 +769,5 @@ namespace PotatoFamine2
             return tableIndex is >= 240 and < 245;
         }
     }
+
 }
