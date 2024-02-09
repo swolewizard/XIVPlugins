@@ -294,8 +294,7 @@ namespace PotatoFamine2
 
         private IntPtr CharacterInitializeDetour(IntPtr drawObjectBase, IntPtr customizeDataPtr)
         {
-            if (lastWasPlayer)
-            {
+            
                 var actor = ObjectTable.CreateObjectReference(lastActor);
                 lastWasModified = false;
                 lastWasSelf = false;
@@ -311,24 +310,18 @@ namespace PotatoFamine2
                         if (!Functions.ListContainsPlayer(PluginConfig.TrustedList, actor.Name.TextValue))
                         {
                             this.ChangeRace(customizeDataPtr, PluginConfig.ChangeOthersTargetRace);
-                            this.ChangeNPCRace(customizeDataPtr, PluginConfig.ChangeOthersTargetRace);
                         }
 
                     }
                     else //Change them
                     {
                         this.ChangeRace(customizeDataPtr, PluginConfig.ChangeOthersTargetRace);
-                        this.ChangeNPCRace(customizeDataPtr, PluginConfig.ChangeOthersTargetRace);
                     }
 
 
                 }
 
-                if (actor != null &&
-                    (actor.ObjectId != CHARA_WINDOW_ACTOR_ID || PluginConfig.ImmersiveMode)
-                    && ClientState.LocalPlayer != null
-                    && actor.ObjectId != ClientState.LocalPlayer.ObjectId
-                    && PluginConfig.ForciblyChangePeople && Functions.ListContainsPlayer(PluginConfig.ForciblyChangeList, actor.Name.TextValue))
+                if (actor != null)
                 {
                     //They're in the forcibly change list so we're changing them
                     this.ChangeRace(customizeDataPtr, PluginConfig.ForciblyChangePeopleTargetRace, true);
@@ -343,7 +336,7 @@ namespace PotatoFamine2
                     lastWasSelf = true;
                     this.ChangeRace(customizeDataPtr, PluginConfig.ChangeSelfTargetRace);
                 }
-            }
+            
             return charaInitHook.Original(drawObjectBase, customizeDataPtr);
         }
 
@@ -400,40 +393,6 @@ namespace PotatoFamine2
                 lastWasModified = true;
             }
         }
-
-        private void ChangeNPCRace(IntPtr customizeDataPtr, Race targetRace)
-        {
-            var customData = Marshal.PtrToStructure<CharaCustomizeData>(customizeDataPtr);
-
-            // Modify the race/tribe accordingly
-            customData.Race = targetRace;
-            customData.Tribe = (byte)((byte)customData.Race * 2 - customData.Tribe % 2);
-
-            // Special-case Hrothgar gender to prevent issues
-            customData.Gender = targetRace switch
-            {
-                Race.HROTHGAR => 0, // Force male for Hrothgar
-                _ => customData.Gender
-            };
-
-            // Constrain face type to 0-3 so we don't decapitate the character
-            customData.FaceType %= 4;
-
-            // Constrain body type to 0-1 so we don't crash the game
-            customData.ModelType %= 2;
-
-            // Hrothgar have a limited number of lip colors?
-            customData.LipColor = targetRace switch
-            {
-                Race.HROTHGAR => (byte)(customData.LipColor % 5 + 1),
-                _ => customData.LipColor
-            };
-
-            customData.HairStyle = (byte)(customData.HairStyle % RaceMappings.RaceHairs[targetRace] + 1);
-
-            Marshal.StructureToPtr(customData, customizeDataPtr, true);
-        }
-
         private IntPtr FlagSlotUpdateDetour(IntPtr actorPtr, uint slot, IntPtr equipDataPtr)
         {
             if (lastWasPlayer && lastWasModified)
@@ -694,27 +653,6 @@ namespace PotatoFamine2
                 *ActorDrawState(mount) |= DrawState.Invisibility;
             }
 
-            // Make NPC actors invisible
-            if (actor?.ObjectKind == ObjectKind.BattleNpc)
-            {
-                foreach (var gameObject in Objects)
-                {
-                    if (gameObject.ObjectKind == ObjectKind.BattleNpc)
-                    {
-                        *ActorDrawState(gameObject) |= DrawState.Invisibility;
-                    }
-                }
-            }
-            else if (actor?.ObjectKind == ObjectKind.EventNpc)
-            {
-                foreach (var gameObject in Objects)
-                {
-                    if (gameObject.ObjectKind == ObjectKind.EventNpc)
-                    {
-                        *ActorDrawState(gameObject) |= DrawState.Invisibility;
-                    }
-                }
-            }
         }
 
         public static void MakeVisible(GameObject? actor)
@@ -732,29 +670,6 @@ namespace PotatoFamine2
                 *ActorDrawState(mount) &= ~DrawState.Invisibility;
             }
 
-            // Make NPC actors visible
-            if (actor?.ObjectKind == ObjectKind.BattleNpc)
-            {
-                foreach (var gameObject in Objects)
-                {
-                    if (gameObject.ObjectKind == ObjectKind.BattleNpc)
-                    {
-                        *ActorDrawState(gameObject) &= ~DrawState.Invisibility;
-                    }
-
-                }
-            }
-            else if (actor?.ObjectKind == ObjectKind.EventNpc)
-            {
-                foreach (var gameObject in Objects)
-                {
-                    if (gameObject.ObjectKind == ObjectKind.EventNpc)
-                    {
-                        *ActorDrawState(gameObject) &= ~DrawState.Invisibility;
-                    }
-
-                }
-            }
         }
 
         private static bool BadRedrawIndices(GameObject? actor, out int tableIndex)
